@@ -1,789 +1,792 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>社媒数据整合工具</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-:root{
-  --bg:#0a0a0f;--surf:#111118;--bdr:#1e1e2e;
-  --acc:#7c6af7;--acc2:#e85d8a;
-  --tx:#e8e8f0;--mu:#5a5a7a;
-  --ok:#3ddc97;--warn:#f0a500;--err:#e85d8a;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;
-  background-image:linear-gradient(rgba(124,106,247,.04) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(124,106,247,.04) 1px,transparent 1px);
-  background-size:40px 40px;pointer-events:none;z-index:0}
-.orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:.15;pointer-events:none;z-index:0}
-.orb1{width:500px;height:500px;background:var(--acc);top:-150px;left:-100px}
-.orb2{width:400px;height:400px;background:var(--acc2);bottom:-100px;right:-80px}
-.wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:60px 24px 100px}
-/* header */
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,106,247,.12);
-  border:1px solid rgba(124,106,247,.3);color:var(--acc);font-family:'DM Mono',monospace;
-  font-size:11px;padding:5px 12px;border-radius:20px;letter-spacing:.08em;
-  text-transform:uppercase;margin-bottom:20px}
-.badge::before{content:'●';font-size:8px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-h1{font-size:clamp(32px,5vw,52px);font-weight:800;line-height:1.1;letter-spacing:-.02em}
-h1 span{color:var(--acc)}
-.sub{color:var(--mu);font-size:15px;margin-top:12px;line-height:1.6}
-/* section label */
-.sec{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--mu);margin-bottom:20px;
-  display:flex;align-items:center;gap:12px}
-.sec::after{content:'';flex:1;height:1px;background:var(--bdr)}
-/* upload zone */
-.zone{border:1.5px dashed var(--acc);border-radius:16px;padding:32px;text-align:center;
-  cursor:pointer;transition:all .2s;background:rgba(124,106,247,.04);
-  margin-bottom:40px;position:relative;overflow:hidden}
-.zone:hover{background:rgba(124,106,247,.08)}
-.zone.ok{border-style:solid;border-color:var(--ok);background:rgba(61,220,151,.04)}
-.zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.zone .zi{font-size:32px;margin-bottom:12px}
-.zone .zl{font-size:14px;color:var(--mu)}
-.zone .zl strong{color:var(--tx);display:block;margin-bottom:4px;font-size:16px}
-.zone.ok .zl strong{color:var(--ok)}
-.zf{font-family:'DM Mono',monospace;font-size:12px;color:var(--ok);margin-top:8px}
-/* platform grid */
-.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:48px}
-.pc{border:1.5px solid var(--bdr);border-radius:14px;padding:20px 16px;cursor:pointer;
-  transition:all .2s;background:var(--surf);position:relative;overflow:hidden;text-align:center}
-.pc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:var(--c);transform:scaleX(0);transform-origin:left;transition:transform .3s}
-.pc:hover{border-color:var(--c);transform:translateY(-2px)}
-.pc:hover::before,.pc.up::before{transform:scaleX(1)}
-.pc.up{border-color:var(--c);background:color-mix(in srgb,var(--c) 8%,var(--surf))}
-.pc input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.pi{font-size:28px;margin-bottom:10px}
-.pn{font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--c)}
-.ps{font-family:'DM Mono',monospace;font-size:10px;color:var(--mu);margin-top:6px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pc.up .ps{color:var(--ok)}
-.ck{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;
-  background:var(--ok);color:#000;font-size:10px;display:none;
-  align-items:center;justify-content:center;font-weight:700}
-.pc.up .ck{display:flex}
-/* generate button */
-.gbtn{width:100%;padding:18px;background:linear-gradient(135deg,var(--acc),var(--acc2));
-  border:none;border-radius:14px;color:#fff;font-family:'Syne',sans-serif;
-  font-size:16px;font-weight:700;letter-spacing:.04em;cursor:pointer;
-  transition:all .2s;margin-bottom:24px}
-.gbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 16px 40px rgba(124,106,247,.35)}
-.gbtn:disabled{opacity:.4;cursor:not-allowed}
-/* progress */
-.prog{height:3px;background:var(--bdr);border-radius:2px;overflow:hidden;margin-bottom:24px;display:none}
-.prog.v{display:block}
-.pf{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0%;transition:width .4s}
-/* log */
-.log{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;padding:20px;
-  font-family:'DM Mono',monospace;font-size:12px;line-height:1.8;
-  display:none;margin-bottom:24px;max-height:280px;overflow-y:auto}
-.log.v{display:block}
-.l{color:var(--mu)} .lo{color:var(--ok)} .lw{color:var(--warn)} .le{color:var(--err)} .lh{color:var(--acc);font-weight:600}
-/* download */
-.dlp{border:1.5px solid var(--ok);border-radius:14px;padding:28px;text-align:center;
-  background:rgba(61,220,151,.04);display:none}
-.dlp.v{display:block;animation:up .4s ease}
-@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.dlp h3{color:var(--ok);font-size:20px;margin-bottom:8px}
-.dlp p{color:var(--mu);font-size:13px;margin-bottom:20px}
-.dbt{display:inline-flex;align-items:center;gap:10px;background:var(--ok);color:#000;
-  border:none;border-radius:10px;padding:12px 28px;font-family:'Syne',sans-serif;
-  font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
-.dbt:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(61,220,151,.3)}
-.sr{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;justify-content:center}
-.chip{background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:8px;
-  padding:8px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--mu)}
-.chip b{color:var(--tx)}
-/* ── Modal ── */
-.mbg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:100;
-  display:none;align-items:center;justify-content:center;padding:24px}
-.mbg.v{display:flex}
-.modal{background:var(--surf);border:1px solid var(--bdr);border-radius:20px;
-  padding:32px;max-width:660px;width:100%;max-height:80vh;overflow-y:auto}
-.modal h2{font-size:20px;font-weight:700;margin-bottom:8px}
-.modal .md{color:var(--mu);font-size:13px;margin-bottom:20px;line-height:1.6}
-.wbanner{background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);
-  border-radius:10px;padding:12px 16px;color:var(--warn);font-size:13px;margin-bottom:20px}
-/* account row */
-.arow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;
-  margin-bottom:12px;padding:14px;background:rgba(255,255,255,.03);
-  border:1px solid var(--bdr);border-radius:10px}
-.an{font-family:'DM Mono',monospace;font-size:13px;color:var(--tx);font-weight:500;margin-bottom:3px}
-.ap{font-family:'DM Mono',monospace;font-size:11px;color:var(--mu);margin-bottom:4px}
-.ahint{font-size:11px;color:var(--ok);margin-top:2px} /* fuzzy hint */
-.asel{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;
-  padding:8px 12px;color:var(--tx);font-family:'DM Mono',monospace;
-  font-size:12px;cursor:pointer;outline:none;min-width:180px;max-width:200px}
-.asel:focus{border-color:var(--acc)}
-.mbtns{display:flex;gap:12px;margin-top:24px}
-.mok{flex:1;padding:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));
-  border:none;border-radius:10px;color:#fff;font-family:'Syne',sans-serif;
-  font-size:14px;font-weight:700;cursor:pointer}
-.msk{padding:12px 20px;background:transparent;border:1px solid var(--bdr);
-  border-radius:10px;color:var(--mu);font-family:'Syne',sans-serif;font-size:14px;cursor:pointer}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社媒数据整合工具 - 专业版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .file-upload {
+            margin: 10px 0;
+        }
+        .file-upload label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        .file-upload input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .file-upload input[type="file"]:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        .file-status {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .file-status.success { color: #28a745; }
+        .file-status.error { color: #dc3545; }
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        .progress {
+            margin-top: 20px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+        .info-box li {
+            margin: 5px 0;
+        }
+        .log-box {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+        }
+        .log-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .log-item.info { background: #d1ecf1; color: #0c5460; }
+        .log-item.success { background: #d4edda; color: #155724; }
+        .log-item.warning { background: #fff3cd; color: #856404; }
+        .log-item.error { background: #f8d7da; color: #721c24; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
-<div class="orb orb1"></div>
-<div class="orb orb2"></div>
-
-<!-- 未知账号配置弹窗 -->
-<div class="mbg" id="mbg">
-  <div class="modal">
-    <h2>🔍 发现未识别的账号</h2>
-    <p class="md">
-      以下账号在总表的 Sheet10 里没有找到完全匹配的记录。<br>
-      括号里是系统猜测的最相近账号，如果猜对了直接点确认，猜错了手动选。<br>
-      <strong style="color:var(--tx)">选完会自动记住，下次同一账号不用再配。</strong>
-    </p>
-    <div class="wbanner">⚠ 没有选择产品的账号数据会被跳过</div>
-    <div id="arows"></div>
-    <div class="mbtns">
-      <button class="mok" id="mok">✓ 确认，继续生成</button>
-      <button class="msk" id="msk">跳过未知账号，直接生成</button>
-    </div>
-  </div>
-</div>
-
-<div class="wrap">
-  <header style="margin-bottom:64px">
-    <div class="badge">社媒数据整合工具 · 本地运行</div>
-    <h1>上传数据<br><span>一键生成总表</span></h1>
-    <p class="sub">
-      自动读取 Sheet10 账号表 · 模糊匹配拼写差异 · 新月份日期行自动生成<br>
-      未知账号弹窗配置并记忆 · 数据全程不离开你的电脑
-    </p>
-  </header>
-
-  <div class="sec">01 · 上传总表模板（必须）</div>
-  <div class="zone" id="mzone">
-    <input type="file" id="mf" accept=".xlsx">
-    <div class="zi" id="mzi">📋</div>
-    <div class="zl"><strong id="mzl">点击上传总数据表格.xlsx</strong><span>程序会自动读取其中的 Sheet10 账号映射表</span></div>
-    <div class="zf" id="mzf"></div>
-  </div>
-
-  <div class="sec">02 · 上传各平台导出文件（有哪个传哪个）</div>
-  <div class="pgrid">
-    <div class="pc" style="--c:#1877f2"><input type="file" id="ff" accept=".csv,.xlsx"><div class="ck">✓</div><div class="pi">📘</div><div class="pn">Facebook</div><div class="ps" id="fs">点击上传</div></div>
-    <div class="pc" style="--c:#e1306c"><input type="file" id="if" accept=".csv,.xlsx"><div class="ck">✓</div><div class="pi">📸</div><div class="pn">Instagram</div><div class="ps" id="is">点击上传</div></div>
-    <div class="pc" style="--c:#00f2ea"><input type="file" id="tf" accept=".csv,.xlsx"><div class="ck">✓</div><div class="pi">🎵</div><div class="pn">TikTok</div><div class="ps" id="ts">点击上传</div></div>
-    <div class="pc" style="--c:#ff0000"><input type="file" id="yf" accept=".csv,.xlsx"><div class="ck">✓</div><div class="pi">▶️</div><div class="pn">YouTube</div><div class="ps" id="ys">点击上传</div></div>
-    <div class="pc" style="--c:#aaa"><input type="file" id="xf" accept=".csv,.xlsx"><div class="ck">✓</div><div class="pi">𝕏</div><div class="pn">X / Twitter</div><div class="ps" id="xs">点击上传</div></div>
-  </div>
-
-  <button class="gbtn" id="gb" disabled>⚡ 生成总表</button>
-  <div class="prog" id="prog"><div class="pf" id="pf"></div></div>
-  <div class="log" id="logel"></div>
-  <div class="dlp" id="dlp">
-    <h3>✅ 总表已生成</h3>
-    <p id="dlpdesc"></p>
-    <button class="dbt" id="dbt">⬇ 下载 Excel 总表</button>
-    <div class="sr" id="sr"></div>
-  </div>
-</div>
-
-<script>
-// ═══════════════════════════════════════════════════════
-// 持久化
-// ═══════════════════════════════════════════════════════
-const SK = 'smtool_v2';
-const load = () => { try{ return JSON.parse(localStorage.getItem(SK)||'{}') }catch{return{}} };
-const save = m => { try{ localStorage.setItem(SK,JSON.stringify(m)) }catch{} };
-
-// ═══════════════════════════════════════════════════════
-// 状态
-// ═══════════════════════════════════════════════════════
-let masterWb   = null;   // 原始 workbook 对象
-let sheet10Map = {};     // { 账号名 → 产品sheet名 } 从Sheet10动态读取
-let userMap    = load(); // 用户手动配置的映射（持久化）
-let platFiles  = {};     // { plat → {ab, name} }
-let resultBlob = null;
-let modalRes   = null;
-let prodSheets = [];     // 产品sheet名列表
-
-// ═══════════════════════════════════════════════════════
-// Sheet10 解析 → 构建账号映射表
-// 支持的平台列：C=FB, D=INS, E=TT, F=YT, G=X
-// H列是产品名称（总表sheet名）
-// ═══════════════════════════════════════════════════════
-function parseSheet10(wb) {
-  const ws = wb.Sheets['Sheet10'];
-  if (!ws) { log('⚠ 找不到Sheet10，将使用内置映射', 'lw'); return; }
-  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:null });
-  sheet10Map = {};
-  // rows[0] 是表头：[项目组, 产品名称, Facebook page name, ins name, TikTok name, Youtube name, X, 产品名称]
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    const product = r[7] || r[1]; // H列产品名 or B列
-    if (!product) continue;
-    // C=FB(idx2), D=INS(idx3), E=TT(idx4), F=YT(idx5), G=X(idx6)
-    for (const idx of [2,3,4,5,6]) {
-      const acct = r[idx];
-      if (acct) sheet10Map[String(acct).trim()] = String(product).trim();
-    }
-  }
-  log(`✓ Sheet10 读取完成，识别 ${Object.keys(sheet10Map).length} 个账号映射`, 'lo');
-}
-
-// 合并映射：Sheet10 + 用户手动配置（用户优先）
-function getMap() {
-  return Object.assign({}, sheet10Map, userMap);
-}
-
-// ═══════════════════════════════════════════════════════
-// 模糊匹配：找最相近的已知账号
-// 使用简单编辑距离 + 包含关系
-// ═══════════════════════════════════════════════════════
-function editDist(a, b) {
-  a = a.toLowerCase(); b = b.toLowerCase();
-  const m = a.length, n = b.length;
-  const dp = Array.from({length:m+1}, (_,i) => Array.from({length:n+1}, (_,j) => i||j ? (i?i:j) : 0));
-  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
-    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  return dp[m][n];
-}
-
-function fuzzyMatch(unknown) {
-  const map = getMap();
-  const known = Object.keys(map);
-  if (!known.length) return null;
-  const unk = unknown.toLowerCase();
-  let best = null, bestScore = Infinity;
-  for (const k of known) {
-    const kl = k.toLowerCase();
-    // 包含关系优先
-    if (kl.includes(unk) || unk.includes(kl)) {
-      const score = Math.abs(k.length - unknown.length);
-      if (score < bestScore) { bestScore = score; best = k; }
-    }
-  }
-  if (best && bestScore <= 5) return { key: best, product: map[best], score: bestScore };
-  // 编辑距离兜底
-  for (const k of known) {
-    const d = editDist(unknown, k);
-    const threshold = Math.max(3, Math.floor(Math.min(unknown.length,k.length)*0.4));
-    if (d < bestScore && d <= threshold) { bestScore = d; best = k; }
-  }
-  if (best) return { key: best, product: map[best], score: bestScore };
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════
-// 工具
-// ═══════════════════════════════════════════════════════
-const rf = f => new Promise((ok,err)=>{const r=new FileReader();r.onload=e=>ok(e.target.result);r.onerror=err;r.readAsArrayBuffer(f)});
-
-function toDate(v){
-  if(!v) return null;
-  if(v instanceof Date) return isNaN(v.getTime())?null:v;
-  const d = new Date(v); return isNaN(d.getTime())?null:d;
-}
-function ymd(v){
-  const d=toDate(v); if(!d) return null;
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function mkDate(s){ const[y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function num(v){ const n=parseFloat(v); return isNaN(n)?0:Math.round(n); }
-
-function log(msg, cls='l'){
-  const el=document.getElementById('logel'); el.classList.add('v');
-  const d=document.createElement('div'); d.className=cls; d.textContent=msg;
-  el.appendChild(d); el.scrollTop=el.scrollHeight;
-}
-function sp(p){ document.getElementById('prog').classList.add('v'); document.getElementById('pf').style.width=p+'%'; }
-function chkBtn(){ document.getElementById('gb').disabled = !masterWb || !Object.keys(platFiles).length; }
-
-// ═══════════════════════════════════════════════════════
-// Excel cell 操作
-// ═══════════════════════════════════════════════════════
-const EC = (r,c) => XLSX.utils.encode_cell({r:r-1,c:c-1});
-function gc(ws,r,c){ return ws[EC(r,c)]; }
-function sc(ws,r,c,v){
-  const a=EC(r,c);
-  if(v===null||v===undefined){delete ws[a];return;}
-  if(v instanceof Date) ws[a]={t:'d',v,z:'yyyy-mm-dd'};
-  else if(typeof v==='string'&&v[0]==='=') ws[a]={t:'n',f:v.slice(1),v:0};
-  else if(typeof v==='number') ws[a]={t:'n',v};
-  else ws[a]={t:'s',v:String(v)};
-  const rng=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:0,c:0}};
-  rng.e.r=Math.max(rng.e.r,r-1); rng.e.c=Math.max(rng.e.c,c-1);
-  ws['!ref']=XLSX.utils.encode_range(rng);
-}
-function nxRow(ws){
-  if(!ws['!ref']) return 2;
-  return XLSX.utils.decode_range(ws['!ref']).e.r+2;
-}
-function exLinks(ws,col){
-  const s=new Set(); if(!ws['!ref']) return s;
-  const R=XLSX.utils.decode_range(ws['!ref']);
-  for(let r=2;r<=R.e.r+1;r++){const c=gc(ws,r,col);if(c&&c.v)s.add(String(c.v));}
-  return s;
-}
-
-// ═══════════════════════════════════════════════════════
-// 读取所有产品 sheet 的日期行 → dateMaps
-// ═══════════════════════════════════════════════════════
-const RAW_SHEETS = new Set(['产品汇总','Sheet10','TT数据透视表','数据透视表',
-  'TT原始数据','ins原始数据','facebook原始数据','Youtube原始数据 ','X原始数据']);
-
-function readDateMaps(wb){
-  const dm = {};
-  for(const sh of wb.SheetNames){
-    if(RAW_SHEETS.has(sh)) continue;
-    const ws=wb.Sheets[sh]; if(!ws||!ws['!ref']) continue;
-    const R=XLSX.utils.decode_range(ws['!ref']);
-    dm[sh]={};
-    for(let r=4;r<=R.e.r+1;r++){
-      const c=gc(ws,r,2); if(!c) continue;
-      const d=ymd(c.v||c.w); if(d) dm[sh][d]=r;
-    }
-  }
-  return dm;
-}
-
-// ═══════════════════════════════════════════════════════
-// 插入新日期行（按日期顺序，带完整公式）
-// ═══════════════════════════════════════════════════════
-function insertDateRow(wb, shName, dateStr){
-  const ws=wb.Sheets[shName]; if(!ws) return;
-  const R=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:3,c:28}};
-  const newD=mkDate(dateStr);
-  // 找插入位置（按日期升序）
-  let at=R.e.r+2;
-  for(let r=4;r<=R.e.r+1;r++){
-    const cell=gc(ws,r,2); if(!cell){at=r;break;}
-    const d=toDate(cell.v||cell.w);
-    if(d&&d>newD){at=r;break;}
-  }
-  // 下移已有行
-  for(let r=R.e.r+1;r>=at;r--)
-    for(let c=1;c<=R.e.c+2;c++){
-      const fa=EC(r,c),ta=EC(r+1,c);
-      if(ws[fa]) ws[ta]=JSON.parse(JSON.stringify(ws[fa]));
-      else delete ws[ta];
-    }
-  // 清空新行
-  for(let c=1;c<=R.e.c+2;c++) delete ws[EC(at,c)];
-  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R.e.r+1,c:R.e.c}});
-
-  // 取产品名（从A4）
-  const pc=gc(ws,4,1); const prod=pc?String(pc.v):shName;
-  const r=at;
-  sc(ws,r,1,prod);
-  sc(ws,r,2,mkDate(dateStr));
-  // FB
-  sc(ws,r,3,`=COUNTIFS('facebook原始数据'!C:C,B${r},'facebook原始数据'!A:A,A${r})`);
-  sc(ws,r,4,`=SUMIFS('facebook原始数据'!F:F,'facebook原始数据'!A:A,A${r},'facebook原始数据'!C:C,B${r})`);
-  sc(ws,r,5,`=C${r}+I${r}-D${r}`);
-  sc(ws,r,6,`=SUMIFS('facebook原始数据'!N:N,'facebook原始数据'!A:A,A${r},'facebook原始数据'!C:C,B${r})`);
-  sc(ws,r,7,`=SUMIFS('facebook原始数据'!P:P,'facebook原始数据'!A:A,A${r},'facebook原始数据'!C:C,B${r})`);
-  // INS
-  sc(ws,r,9,`=COUNTIFS('ins原始数据'!D:D,B${r},'ins原始数据'!A:A,A${r})`);
-  sc(ws,r,10,`=SUMIFS('ins原始数据'!I:I,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,11,`=SUMIFS('ins原始数据'!J:J,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,12,`=SUMIFS('ins原始数据'!K:K,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,13,`=SUMIFS('ins原始数据'!L:L,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,14,`=SUMIFS('ins原始数据'!M:M,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,15,`=SUMIFS('ins原始数据'!N:N,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  sc(ws,r,16,`=SUMIFS('ins原始数据'!O:O,'ins原始数据'!A:A,A${r},'ins原始数据'!D:D,B${r})`);
-  // TT
-  sc(ws,r,18,`=COUNTIFS('TT原始数据'!D:D,B${r},'TT原始数据'!A:A,A${r})`);
-  sc(ws,r,19,`=SUMIFS('TT原始数据'!E:E,'TT原始数据'!A:A,A${r},'TT原始数据'!D:D,B${r})`);
-  sc(ws,r,20,`=SUMIFS('TT原始数据'!F:F,'TT原始数据'!A:A,A${r},'TT原始数据'!D:D,B${r})`);
-  sc(ws,r,21,`=SUMIFS('TT原始数据'!G:G,'TT原始数据'!A:A,A${r},'TT原始数据'!D:D,B${r})`);
-  // YT
-  sc(ws,r,23,`=COUNTIFS('Youtube原始数据 '!C:C,B${r},'Youtube原始数据 '!A:A,A${r})`);
-  sc(ws,r,24,`=SUMIFS('Youtube原始数据 '!E:E,'Youtube原始数据 '!A:A,A${r},'Youtube原始数据 '!C:C,B${r})`);
-  // X
-  sc(ws,r,26,`=COUNTIFS('X原始数据'!D:D,B${r},'X原始数据'!A:A,A${r})`);
-  sc(ws,r,27,`=SUMIFS('X原始数据'!J:J,'X原始数据'!D:D,B${r},'X原始数据'!A:A,A${r})`);
-  sc(ws,r,28,`=SUMIFS('X原始数据'!Q:Q,'X原始数据'!D:D,B${r},'X原始数据'!A:A,A${r})`);
-}
-
-function ensureRow(wb, dm, sh, dateStr){
-  if(!dm[sh]) dm[sh]={};
-  if(dm[sh][dateStr]) return dm[sh][dateStr];
-  log(`  📅 新增日期行 ${dateStr} → [${sh}]`, 'lw');
-  insertDateRow(wb, sh, dateStr);
-  // 重扫行号
-  const ws=wb.Sheets[sh];
-  if(ws&&ws['!ref']){
-    const R=XLSX.utils.decode_range(ws['!ref']); dm[sh]={};
-    for(let r=4;r<=R.e.r+1;r++){const c=gc(ws,r,2);if(c){const d=ymd(c.v||c.w);if(d)dm[sh][d]=r;}}
-  }
-  return dm[sh][dateStr]||null;
-}
-
-// ═══════════════════════════════════════════════════════
-// 账号解析工具
-// ═══════════════════════════════════════════════════════
-function resolveAcc(rawAcc){
-  if(!rawAcc) return null;
-  const k = String(rawAcc).trim();
-  const map = getMap();
-  if(map[k]) return { product: map[k], exact: true };
-  const fuzzy = fuzzyMatch(k);
-  if(fuzzy) return { product: fuzzy.product, exact: false, matched: fuzzy.key, score: fuzzy.score };
-  return null;
-}
-
-function getAccFromRow(r, plat){
-  if(plat==='fb')  return r['公共主页名称']||r['Page Name']||r['Account']||null;
-  if(plat==='ins'){
-    let a=r['账户账号']||r['Username'];
-    if(!a){ const dn=r['账户名称']; if(dn){ const m=getMap(); a=m[dn]?dn:dn; } }
-    return a||null;
-  }
-  if(plat==='tt')  return r['账号']||r['Account']||null;
-  if(plat==='yt')  return r['账号']||r['Channel']||r['Account']||null;
-  if(plat==='x')   return (r['Original Tweet User Screen Name']||r['账户']||r['Account']||'').replace(/^@/,'')||null;
-  return null;
-}
-function getDtFromRow(r, plat){
-  if(plat==='fb'||plat==='ins') return r['发布时间']||r['Published']||r['Post Date'];
-  if(plat==='tt'||plat==='yt') return r['视频发布时间']||r['Date'];
-  if(plat==='x')  return r['Created At']||r['Date'];
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════
-// 未知账号弹窗
-// ═══════════════════════════════════════════════════════
-function showModal(unknowns){
-  return new Promise(res=>{
-    modalRes=res;
-    const ct=document.getElementById('arows'); ct.innerHTML='';
-    const opts=prodSheets.map(p=>`<option value="${p}">${p}</option>`).join('');
-    for(const u of unknowns){
-      const d=document.createElement('div'); d.className='arow';
-      const hintHTML = u.fuzzyMatch
-        ? `<div class="ahint">💡 猜测匹配：${u.fuzzyMatch} → ${u.fuzzyProduct}</div>`
-        : '';
-      const preselect = u.fuzzyProduct
-        ? prodSheets.find(p=>p===u.fuzzyProduct)||''
-        : '';
-      d.innerHTML=`
-        <div>
-          <div class="an">${u.account}</div>
-          <div class="ap">平台：${u.plat.toUpperCase()}</div>
-          ${hintHTML}
+    <div class="container">
+        <h1>📊 社媒数据整合工具</h1>
+        <p class="subtitle">网页版 · 无需安装 · 本地处理 · 数据安全</p>
+        
+        <div class="info-box">
+            <h3>📖 使用说明：</h3>
+            <ul>
+                <li><strong>步骤 1：</strong>上传总表模板（必须包含 Sheet10 账号映射表）</li>
+                <li><strong>步骤 2：</strong>上传 5 个平台的源数据文件（有哪个传哪个）</li>
+                <li><strong>步骤 3：</strong>点击"开始生成总表"按钮</li>
+                <li><strong>步骤 4：</strong>下载生成的 Excel 总表</li>
+                <li><strong>⚠️ 注意：</strong>所有数据处理都在本地完成，不会上传到服务器</li>
+            </ul>
         </div>
-        <select class="asel" data-acc="${u.account}">
-          <option value="">— 选择产品 —</option>
-          ${prodSheets.map(p=>`<option value="${p}"${p===preselect?' selected':''}>${p}</option>`).join('')}
-          <option value="__skip__">跳过此账号</option>
-        </select>`;
-      ct.appendChild(d);
-    }
-    document.getElementById('mbg').classList.add('v');
-  });
-}
-document.getElementById('mok').onclick = () => {
-  const news={};
-  document.querySelectorAll('.asel').forEach(s=>{
-    const acc=s.dataset.acc, val=s.value;
-    if(val&&val!=='__skip__'){ userMap[acc]=val; news[acc]=val; }
-  });
-  const saved=load(); Object.assign(saved,news); save(saved);
-  document.getElementById('mbg').classList.remove('v');
-  if(modalRes){modalRes();modalRes=null;}
-};
-document.getElementById('msk').onclick = () => {
-  document.getElementById('mbg').classList.remove('v');
-  if(modalRes){modalRes();modalRes=null;}
-};
+        
+        <div class="section">
+            <div class="section-title">步骤 1：上传总表模板（必须）</div>
+            <div class="file-upload">
+                <label>📋 总数据表格.xlsx</label>
+                <input type="file" id="templateFile" accept=".xlsx,.xls" />
+                <div class="file-status" id="templateStatus"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">步骤 2：上传各平台数据（有哪个传哪个）</div>
+            <div class="grid-2">
+                <div class="file-upload">
+                    <label>📘 Facebook 数据</label>
+                    <input type="file" id="fbFile" accept=".xlsx,.xls,.csv" />
+                    <div class="file-status" id="fbStatus"></div>
+                </div>
+                <div class="file-upload">
+                    <label>📸 Instagram 数据</label>
+                    <input type="file" id="insFile" accept=".xlsx,.xls,.csv" />
+                    <div class="file-status" id="insStatus"></div>
+                </div>
+                <div class="file-upload">
+                    <label>🎵 TikTok 数据</label>
+                    <input type="file" id="ttFile" accept=".xlsx,.xls,.csv" />
+                    <div class="file-status" id="ttStatus"></div>
+                </div>
+                <div class="file-upload">
+                    <label>▶️ YouTube 数据</label>
+                    <input type="file" id="ytFile" accept=".xlsx,.xls,.csv" />
+                    <div class="file-status" id="ytStatus"></div>
+                </div>
+                <div class="file-upload">
+                    <label>𝕏 X/Twitter 数据</label>
+                    <input type="file" id="xFile" accept=".xlsx,.xls,.csv" />
+                    <div class="file-status" id="xStatus"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn" id="generateBtn" onclick="generateReport()">🚀 开始生成总表</button>
+            <button class="btn" onclick="resetForm()" style="background: #6c757d;">🔄 重置</button>
+        </div>
+        
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="log-box" id="logBox" style="display:none;">
+            <strong>📝 处理日志：</strong>
+            <div id="logContent"></div>
+        </div>
+    </div>
 
-// ═══════════════════════════════════════════════════════
-// 写入各平台原始数据 sheet
-// ═══════════════════════════════════════════════════════
-const VL={
-  fb: r=>`=VLOOKUP(B${r},'Sheet10'!C:H,6,0)`,
-  ins:r=>`=VLOOKUP(B${r},'Sheet10'!D:H,5,0)`,
-  tt: r=>`=VLOOKUP(B${r},'Sheet10'!E:H,4,0)`,
-  yt: r=>`=VLOOKUP(B${r},'Sheet10'!F:F,1,0)`,
-  x:  r=>`=VLOOKUP(B${r},'Sheet10'!G:H,2,0)`,
-};
-
-function writeFB(wb,rows){
-  const ws=wb.Sheets['facebook原始数据'];if(!ws)return 0;
-  const ex=exLinks(ws,5);let n=0,s=nxRow(ws);
-  for(const r of rows){
-    const acc=getAccFromRow(r,'fb'); if(!acc) continue;
-    const res=resolveAcc(acc); if(!res) continue;
-    const dt=ymd(getDtFromRow(r,'fb')); if(!dt) continue;
-    const lk=r['固定链接']||r['Permalink']||r['URL']||'';
-    if(lk&&ex.has(lk)) continue;
-    const row=s+n;
-    sc(ws,row,1,VL.fb(row)); sc(ws,row,2,acc); sc(ws,row,3,mkDate(dt));
-    sc(ws,row,4,r['字幕类型']||'N/A'); sc(ws,row,5,lk);
-    sc(ws,row,6,num(r['交叉发布']??0)); sc(ws,row,7,num(r['分享帖']??0)); sc(ws,row,8,r['帖子类型']||'');
-    sc(ws,row,13,'内容创建至今');
-    sc(ws,row,14,num(r['观看量']??r['Views']??0));
-    sc(ws,row,15,num(r['覆盖人数']??r['Reach']??0));
-    sc(ws,row,16,num(r['心情、评论和分享']??0));
-    sc(ws,row,17,num(r['心情']??r['Reactions']??0));
-    sc(ws,row,18,num(r['评论数']??r['Comments']??0));
-    sc(ws,row,19,num(r['分享次数']??r['Shares']??0));
-    if(r['观看时长（秒）']) sc(ws,row,20,num(r['观看时长（秒）']));
-    if(r['平均观看时长（秒）']) sc(ws,row,21,num(r['平均观看时长（秒）']));
-    if(r['收入估值 （美元）']) sc(ws,row,22,num(r['收入估值 （美元）']));
-    sc(ws,row,29,`=IF(N${row}>100000,100000,IF(N${row}>50000,50000,IF(N${row}>10000,10000,0)))`);
-    if(lk)ex.add(lk); n++;
-  } return n;
-}
-
-function writeINS(wb,rows){
-  const ws=wb.Sheets['ins原始数据'];if(!ws)return 0;
-  const ex=exLinks(ws,5);let n=0,s=nxRow(ws);
-  for(const r of rows){
-    let acc=r['账户账号']||r['Username'];
-    if(!acc){const dn=r['账户名称'];if(dn)acc=dn;}
-    if(!acc) continue; acc=String(acc).trim();
-    const res=resolveAcc(acc); if(!res) continue;
-    const dt=ymd(r['发布时间']||r['Published']||r['Post Date']); if(!dt) continue;
-    const lk=r['固定链接']||r['Permalink']||'';
-    if(lk&&ex.has(lk)) continue;
-    const row=s+n;
-    sc(ws,row,1,VL.ins(row)); sc(ws,row,2,acc);
-    sc(ws,row,3,num(r['时长（秒）']??0)); sc(ws,row,4,mkDate(dt));
-    sc(ws,row,5,lk); sc(ws,row,6,r['帖子类型']||'');
-    sc(ws,row,8,'内容创建至今');
-    sc(ws,row,9,num(r['浏览量']??0));
-    sc(ws,row,10,num(r['覆盖人数']??r['Reach']??0));
-    sc(ws,row,11,num(r['赞']??r['Likes']??0));
-    sc(ws,row,12,num(r['分享']??r['Shares']??0));
-    sc(ws,row,13,num(r['关注者数']??r['Followers']??0));
-    sc(ws,row,14,num(r['评论']??r['Comments']??0));
-    sc(ws,row,15,num(r['收藏次数']??r['Saves']??0));
-    sc(ws,row,16,`=IF(I${row}>100000,100000,IF(I${row}>50000,50000,IF(I${row}>10000,10000,0)))`);
-    if(lk)ex.add(lk); n++;
-  } return n;
-}
-
-function writeTT(wb,rows){
-  const ws=wb.Sheets['TT原始数据'];if(!ws)return 0;
-  const ex=exLinks(ws,3);let n=0,s=nxRow(ws);
-  for(const r of rows){
-    const vid=r['内容']||r['Video ID']; if(!vid||vid==='总计') continue;
-    const dt=ymd(r['视频发布时间']||r['Date']); if(!dt) continue;
-    const acc=r['账号']||r['Account']||null;
-    // TT行如果有账号就验证，没有也写入（VLOOKUP会用B列）
-    if(acc&&!resolveAcc(acc)) continue;
-    const lk=`https://www.tiktok.com/video/${vid}`;if(ex.has(lk))continue;
-    const row=s+n;
-    sc(ws,row,1,VL.tt(row)); sc(ws,row,2,acc||'');
-    sc(ws,row,3,lk); sc(ws,row,4,mkDate(dt));
-    sc(ws,row,5,num(r['观看次数']??r['Views']??0));
-    sc(ws,row,6,num(r['点赞量']??r['Likes']??0));
-    sc(ws,row,7,num(r['评论量']??r['Comments']??0));
-    ex.add(lk); n++;
-  } return n;
-}
-
-function writeYT(wb,rows){
-  const ws=wb.Sheets['Youtube原始数据 '];if(!ws)return 0;
-  const ex=exLinks(ws,2);let n=0,s=nxRow(ws);
-  for(const r of rows){
-    const vid=r['内容']||r['Video ID']; if(!vid||vid==='总计') continue;
-    const dt=ymd(r['视频发布时间']||r['Date']); if(!dt) continue;
-    const acc=r['账号']||r['Channel']||r['Account']||String(vid);
-    if(ex.has(String(vid)))continue;
-    const row=s+n;
-    sc(ws,row,1,VL.yt(row)); sc(ws,row,2,acc);
-    sc(ws,row,3,mkDate(dt)); sc(ws,row,4,num(r['时长']??0));
-    sc(ws,row,5,num(r['观看次数']??r['Views']??0));
-    sc(ws,row,6,num(r['订阅人数']??r['Subscribers']??0));
-    ex.add(String(vid)); n++;
-  } return n;
-}
-
-function writeX(wb,rows){
-  const ws=wb.Sheets['X原始数据'];if(!ws)return 0;
-  const ex=exLinks(ws,3);let n=0,s=nxRow(ws);
-  for(const r of rows){
-    const url=r['Tweet Url']||r['URL']||'';
-    const dt=ymd(r['Created At']||r['Date']); if(!dt) continue;
-    const acc=(r['Original Tweet User Screen Name']||r['账户']||r['Account']||'').replace(/^@/,'');
-    if(!resolveAcc(acc)) continue;
-    if(url&&ex.has(url)) continue;
-    const row=s+n;
-    sc(ws,row,1,VL.x(row)); sc(ws,row,2,acc); sc(ws,row,3,url); sc(ws,row,4,mkDate(dt));
-    sc(ws,row,5,num(r['Reply Count']??0)); sc(ws,row,6,num(r['Retweet Count']??0));
-    sc(ws,row,7,num(r['Favorite Count']??0)); sc(ws,row,8,num(r['Quote Count']??0));
-    sc(ws,row,9,num(r['Bookmark Count']??0)); sc(ws,row,10,num(r['View Count']??0));
-    sc(ws,row,11,r['Favorited']||'No'); sc(ws,row,12,r['Retweeted']||'No');
-    sc(ws,row,13,r['Bookmarked']||'No'); sc(ws,row,14,r['Is Quote Status']||'No');
-    sc(ws,row,15,r['Possibly Sensitive']||'No'); sc(ws,row,16,r['Language']||'en');
-    sc(ws,row,17,`=E${row}+F${row}+G${row}+H${row}+I${row}`);
-    if(url)ex.add(url); n++;
-  } return n;
-}
-
-// ═══════════════════════════════════════════════════════
-// 解析平台文件
-// ═══════════════════════════════════════════════════════
-function parseFile(ab){
-  const wb=XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true});
-  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:null,raw:false});
-}
-
-// ═══════════════════════════════════════════════════════
-// 事件绑定
-// ═══════════════════════════════════════════════════════
-document.getElementById('mf').addEventListener('change', async e => {
-  const f=e.target.files[0]; if(!f) return;
-  const ab=await rf(f);
-  masterWb=XLSX.read(new Uint8Array(ab),{type:'array',cellDates:true,cellFormula:true});
-  parseSheet10(masterWb);
-  prodSheets=masterWb.SheetNames.filter(s=>!RAW_SHEETS.has(s));
-  document.getElementById('mzone').classList.add('ok');
-  document.getElementById('mzi').textContent='✅';
-  document.getElementById('mzl').textContent='总表已加载';
-  document.getElementById('mzf').textContent=f.name;
-  log(`✓ 总表: ${f.name}`, 'lo');
-  log(`  产品sheet: ${prodSheets.join(' / ')}`, 'lo');
-  log(`  Sheet10 账号数: ${Object.keys(sheet10Map).length}`, 'lo');
-  chkBtn();
-});
-
-const pcfg=[
-  {id:'ff',plat:'fb', sid:'fs'},{id:'if',plat:'ins',sid:'is'},
-  {id:'tf',plat:'tt', sid:'ts'},{id:'yf',plat:'yt', sid:'ys'},
-  {id:'xf',plat:'x',  sid:'xs'},
-];
-for(const c of pcfg){
-  document.getElementById(c.id).addEventListener('change', async e=>{
-    const f=e.target.files[0]; if(!f) return;
-    platFiles[c.plat]={ab:await rf(f),name:f.name};
-    document.getElementById(c.id).closest('.pc').classList.add('up');
-    document.getElementById(c.sid).textContent=f.name;
-    log(`✓ ${c.plat.toUpperCase()}: ${f.name}`, 'lo');
-    chkBtn();
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-// 主流程
-// ═══════════════════════════════════════════════════════
-document.getElementById('gb').addEventListener('click', async () => {
-  const btn=document.getElementById('gb'); btn.disabled=true;
-  document.getElementById('dlp').classList.remove('v');
-  document.getElementById('logel').innerHTML='';
-  log('══ 开始处理 ══','lh'); sp(5);
-
-  // 1. 解析所有平台文件
-  const parsed={};
-  for(const [plat,{ab,name}] of Object.entries(platFiles)){
-    try{ parsed[plat]=parseFile(ab); log(`  解析 ${plat.toUpperCase()}: ${parsed[plat].length} 行`,'l'); }
-    catch(e){ log(`  ✗ ${plat.toUpperCase()} 失败: ${e.message}`,'le'); }
-  }
-  sp(15);
-
-  // 2. 扫描未知账号（用模糊匹配后还是不确定的才弹窗）
-  const unknowns=[];
-  const seenUnk=new Set();
-  for(const [plat,rows] of Object.entries(parsed)){
-    for(const r of rows){
-      const acc=getAccFromRow(r,plat); if(!acc) continue;
-      const ak=String(acc).trim();
-      if(seenUnk.has(ak)) continue;
-      const res=resolveAcc(ak);
-      if(!res){
-        // 完全不认识，需要弹窗
-        unknowns.push({account:ak, plat, fuzzyMatch:null, fuzzyProduct:null});
-        seenUnk.add(ak);
-      } else if(!res.exact){
-        // 模糊匹配到了，记录下来告知用户并预选
-        unknowns.push({account:ak, plat, fuzzyMatch:res.matched, fuzzyProduct:res.product});
-        seenUnk.add(ak);
-        // 自动采纳模糊匹配
-        userMap[ak]=res.product;
-      }
-    }
-  }
-  // 只有完全未知的才弹窗（模糊匹配到的自动采纳）
-  const needModal=unknowns.filter(u=>!u.fuzzyMatch);
-  const autoMatched=unknowns.filter(u=>u.fuzzyMatch);
-  if(autoMatched.length) log(`  ⚡ 模糊匹配自动识别 ${autoMatched.length} 个账号`, 'lw');
-  if(needModal.length){
-    log(`⚠ ${needModal.length} 个账号完全无法识别，请手动配置`, 'lw');
-    await showModal(needModal);
-    log('✓ 账号配置完成', 'lo');
-  }
-  sp(25);
-
-  // 3. 深拷贝总表
-  const wbData=XLSX.write(masterWb,{type:'array',bookType:'xlsx',cellFormula:true});
-  const wb=XLSX.read(new Uint8Array(wbData),{type:'array',cellDates:true,cellFormula:true});
-
-  // 4. 写入原始数据
-  log('\n▶ 写入原始数据...','lh');
-  const stats={};let step=0;const tot=Object.keys(parsed).length;
-  for(const [plat,rows] of Object.entries(parsed)){
-    step++; sp(25+step/tot*35);
-    log(`\n  [${plat.toUpperCase()}]`,'lh');
-    let n=0;
-    if(plat==='fb')  n=writeFB(wb,rows);
-    if(plat==='ins') n=writeINS(wb,rows);
-    if(plat==='tt')  n=writeTT(wb,rows);
-    if(plat==='yt')  n=writeYT(wb,rows);
-    if(plat==='x')   n=writeX(wb,rows);
-    log(`  → 新增 ${n} 条`, n>0?'lo':'l'); stats[plat]=n;
-  }
-  sp(65);
-
-  // 5. 自动补全日期行
-  log('\n▶ 检查并补全日期行...','lh');
-  const dm=readDateMaps(wb);
-  let newDR=0;
-  for(const [plat,rows] of Object.entries(parsed)){
-    for(const r of rows){
-      const acc=getAccFromRow(r,plat); if(!acc) continue;
-      const res=resolveAcc(String(acc).trim()); if(!res) continue;
-      const sh=res.product;
-      if(!wb.Sheets[sh]) continue;
-      const dt=ymd(getDtFromRow(r,plat)); if(!dt) continue;
-      const before=dm[sh]?Object.keys(dm[sh]).length:0;
-      ensureRow(wb,dm,sh,dt);
-      const after=dm[sh]?Object.keys(dm[sh]).length:0;
-      if(after>before) newDR++;
-    }
-  }
-  log(`  → ${newDR>0?`新增 ${newDR} 个日期行`:'所有日期已存在'}`, newDR>0?'lo':'l');
-  sp(90);
-
-  // 6. 导出
-  log('\n▶ 导出...','lh');
-  const out=XLSX.write(wb,{type:'array',bookType:'xlsx',cellFormula:true});
-  resultBlob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  sp(100); log('✓ 完成！','lo');
-
-  const tot2=Object.values(stats).reduce((a,b)=>a+b,0);
-  document.getElementById('dlpdesc').textContent=
-    `新增 ${tot2} 条原始记录，自动生成 ${newDR} 个日期行。用 Excel 打开后公式自动计算。`;
-  document.getElementById('sr').innerHTML=
-    Object.entries(stats).map(([p,n])=>`<div class="chip"><b>${p.toUpperCase()}</b> +${n}</div>`).join('');
-  document.getElementById('dlp').classList.add('v');
-  btn.disabled=false;
-});
-
-document.getElementById('dbt').addEventListener('click',()=>{
-  if(!resultBlob) return;
-  const now=new Date();
-  const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  const a=document.createElement('a'); a.href=URL.createObjectURL(resultBlob);
-  a.download=`总数据表格_${ts}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
-});
-</script>
+    <script>
+        // 全局变量
+        let accountMapping = {};
+        let products = [];
+        
+        // 日志功能
+        function addLog(message, type = 'info') {
+            const logBox = document.getElementById('logBox');
+            const logContent = document.getElementById('logContent');
+            logBox.style.display = 'block';
+            
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${type}`;
+            logItem.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContent.appendChild(logItem);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        
+        // 显示状态
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+        }
+        
+        // 更新进度
+        function updateProgress(percent) {
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressFill').textContent = Math.round(percent) + '%';
+        }
+        
+        // 文件状态
+        function setFileStatus(fileId, statusId, success) {
+            const statusDiv = document.getElementById(statusId);
+            if (success) {
+                statusDiv.textContent = '✅ 已加载';
+                statusDiv.className = 'file-status success';
+            } else {
+                statusDiv.textContent = '❌ 未选择';
+                statusDiv.className = 'file-status error';
+            }
+        }
+        
+        // 重置
+        function resetForm() {
+            ['templateFile', 'fbFile', 'insFile', 'ttFile', 'ytFile', 'xFile'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            ['templateStatus', 'fbStatus', 'insStatus', 'ttStatus', 'ytStatus', 'xStatus'].forEach(id => {
+                document.getElementById(id).textContent = '';
+                document.getElementById(id).className = 'file-status';
+            });
+            document.getElementById('progress').style.display = 'none';
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('logBox').style.display = 'none';
+            document.getElementById('logContent').innerHTML = '';
+            accountMapping = {};
+            products = [];
+        }
+        
+        // 读取文件
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        resolve(workbook);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // 加载账号映射
+        function loadAccountMapping(workbook) {
+            if (!workbook.Sheets['Sheet10']) {
+                throw new Error('模板中未找到 Sheet10 账号映射表');
+            }
+            
+            const sheet = workbook.Sheets['Sheet10'];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            
+            accountMapping = {};
+            products = [];
+            
+            json.forEach(row => {
+                const product = row['产品名称'] || row['产品名称.1'];
+                if (!product) return;
+                
+                if (!products.includes(product)) {
+                    products.push(product);
+                }
+                
+                const platforms = {
+                    'FB': row['Facebook page name'],
+                    'INS': row['ins name'],
+                    'TT': row['TikTok name'],
+                    'YT': row['Youtube name'],
+                    'X': row['X']
+                };
+                
+                Object.entries(platforms).forEach(([platform, account]) => {
+                    if (account && typeof account === 'string') {
+                        const accKey = account.trim().toLowerCase();
+                        accountMapping[accKey] = {
+                            product: product,
+                            platform: platform
+                        };
+                    }
+                });
+            });
+            
+            addLog(`已加载 ${Object.keys(accountMapping).length} 个账号映射`, 'success');
+            addLog(`识别到 ${products.length} 个产品：${products.join(', ')}`, 'info');
+            
+            return accountMapping;
+        }
+        
+        // 解析日期
+        function parseDate(dateValue) {
+            if (!dateValue) return null;
+            
+            if (dateValue instanceof Date) {
+                return dateValue;
+            }
+            
+            if (typeof dateValue === 'string') {
+                const str = dateValue.trim();
+                
+                // 格式 1: 01/31/2026 08:00 (FB/INS)
+                if (str.includes('/')) {
+                    const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                    if (match) {
+                        return new Date(`${match[3]}-${match[1]}-${match[2]}`);
+                    }
+                }
+                
+                // 格式 2: 22-Jan-26 (YT/TT)
+                if (str.includes('-') && /[A-Z][a-z]{2}/.test(str)) {
+                    const date = new Date(str);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                }
+                
+                // 格式 3: Wed Mar 11 17:02:58 +0000 2026 (X)
+                if (str.includes('+0000')) {
+                    const date = new Date(str);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                }
+                
+                // 格式 4: 2026-03-01
+                if (str.includes('-') && /^\d{4}-\d{2}-\d{2}/.test(str)) {
+                    const date = new Date(str);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                }
+                
+                // 兜底
+                const date = new Date(str);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+            
+            return null;
+        }
+        
+        // 格式化日期
+        function formatDate(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}/${month}/${day}`;
+        }
+        
+        // 获取数值
+        function getNumber(row, keys) {
+            if (!keys) return 0;
+            if (!Array.isArray(keys)) keys = [keys];
+            
+            for (let key of keys) {
+                if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+                    const num = parseFloat(row[key]);
+                    if (!isNaN(num)) {
+                        return num;
+                    }
+                }
+            }
+            return 0;
+        }
+        
+        // 主处理函数
+        async function generateReport() {
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+            
+            try {
+                updateProgress(0);
+                document.getElementById('logBox').style.display = 'block';
+                document.getElementById('logContent').innerHTML = '';
+                
+                addLog('🚀 开始处理数据...', 'info');
+                
+                // 1. 加载模板
+                const templateFile = document.getElementById('templateFile').files[0];
+                if (!templateFile) {
+                    throw new Error('请先上传总表模板文件');
+                }
+                
+                updateProgress(5);
+                addLog('📋 正在读取模板文件...', 'info');
+                
+                const templateWorkbook = await readFile(templateFile);
+                loadAccountMapping(templateWorkbook);
+                
+                updateProgress(10);
+                
+                // 2. 处理各平台数据
+                const allRecords = [];
+                const platforms = [
+                    { id: 'fbFile', name: 'Facebook', key: 'FB' },
+                    { id: 'insFile', name: 'Instagram', key: 'INS' },
+                    { id: 'ttFile', name: 'TikTok', key: 'TT' },
+                    { id: 'ytFile', name: 'YouTube', key: 'YT' },
+                    { id: 'xFile', name: 'X/Twitter', key: 'X' }
+                ];
+                
+                let completedPlatforms = 0;
+                
+                for (let platform of platforms) {
+                    const fileInput = document.getElementById(platform.id);
+                    const file = fileInput.files[0];
+                    
+                    if (!file) {
+                        addLog(`⚠️  ${platform.name} 文件未上传，跳过`, 'warning');
+                        completedPlatforms++;
+                        updateProgress(10 + (completedPlatforms / platforms.length) * 60);
+                        continue;
+                    }
+                    
+                    addLog(`📊 正在处理 ${platform.name}...`, 'info');
+                    
+                    try {
+                        const workbook = await readFile(file);
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(sheet);
+                        
+                        let matched = 0;
+                        let unmatched = 0;
+                        
+                        json.forEach(row => {
+                            let account = null;
+                            let date = null;
+                            
+                            // 获取账号和日期
+                            if (platform.key === 'FB') {
+                                account = row['公共主页名称'] || row['公共主页编号'];
+                                date = row['发布时间'] || row['日期'];
+                            } else if (platform.key === 'INS') {
+                                account = row['账户账号'] || row['账户编号'];
+                                date = row['发布时间'] || row['日期'];
+                            } else if (platform.key === 'TT') {
+                                account = row['账户账号'] || row['视频标题'];
+                                date = row['视频发布时间'] || row['发布日期'];
+                            } else if (platform.key === 'YT') {
+                                account = row['视频标题'] || row['账号 ID'];
+                                date = row['视频发布时间'];
+                            } else if (platform.key === 'X') {
+                                account = row['Original Tweet User Screen Name'] || row['账户'];
+                                date = row['Created At'];
+                            }
+                            
+                            if (!account || !date) {
+                                unmatched++;
+                                return;
+                            }
+                            
+                            const dateObj = parseDate(date);
+                            if (!dateObj) {
+                                unmatched++;
+                                return;
+                            }
+                            
+                            const accountKey = String(account).trim().toLowerCase();
+                            const mapping = accountMapping[accountKey];
+                            
+                            if (!mapping) {
+                                unmatched++;
+                                return;
+                            }
+                            
+                            matched++;
+                            
+                            const dateStr = formatDate(dateObj);
+                            
+                            // 提取指标
+                            const record = {
+                                product: mapping.product,
+                                platform: platform.key,
+                                date: dateStr,
+                                dateObj: dateObj,
+                                posts: 1,
+                                views: 0,
+                                engagement: 0,
+                                followers: 0
+                            };
+                            
+                            // 根据平台提取不同指标
+                            if (platform.key === 'FB') {
+                                record.views = getNumber(row, ['观看量', '覆盖人数']);
+                                record.engagement = getNumber(row, ['心情、评论和分享', '评论数', '分享次数']);
+                            } else if (platform.key === 'INS') {
+                                record.views = getNumber(row, ['浏览量', '覆盖人数']);
+                                record.engagement = getNumber(row, ['赞']) + getNumber(row, ['评论']) + getNumber(row, ['分享']);
+                            } else if (platform.key === 'TT') {
+                                record.views = getNumber(row, ['观看次数', '浏览量']);
+                                record.engagement = getNumber(row, ['点赞量']) + getNumber(row, ['评论量']);
+                            } else if (platform.key === 'YT') {
+                                record.views = getNumber(row, ['观看次数']);
+                                record.followers = getNumber(row, ['订阅人数']);
+                            } else if (platform.key === 'X') {
+                                record.views = getNumber(row, ['View Count']);
+                                record.engagement = getNumber(row, ['Reply Count']) + getNumber(row, ['Retweet Count']) + getNumber(row, ['Favorite Count']);
+                            }
+                            
+                            allRecords.push(record);
+                        });
+                        
+                        addLog(`  ✅ ${platform.name}: 总记录 ${json.length} | 匹配 ${matched} | 未匹配 ${unmatched}`, matched > 0 ? 'success' : 'warning');
+                        
+                    } catch (error) {
+                        addLog(`  ❌ ${platform.name} 处理失败：${error.message}`, 'error');
+                    }
+                    
+                    completedPlatforms++;
+                    updateProgress(10 + (completedPlatforms / platforms.length) * 60);
+                }
+                
+                if (allRecords.length === 0) {
+                    throw new Error('没有有效数据可合并，请检查账号映射和数据文件');
+                }
+                
+                addLog(`📈 共收集 ${allRecords.length} 条有效记录`, 'success');
+                
+                updateProgress(75);
+                addLog('🔗 正在聚合数据...', 'info');
+                
+                // 3. 按产品 + 日期聚合
+                const productData = {};
+                
+                products.forEach(product => {
+                    productData[product] = {};
+                });
+                
+                allRecords.forEach(record => {
+                    if (!productData[record.product]) {
+                        productData[record.product] = {};
+                    }
+                    
+                    if (!productData[record.product][record.date]) {
+                        productData[record.product][record.date] = {
+                            date: record.date,
+                            dateObj: record.dateObj,
+                            FB: { posts: 0, views: 0, engagement: 0 },
+                            INS: { posts: 0, views: 0, engagement: 0 },
+                            TT: { posts: 0, views: 0, engagement: 0 },
+                            YT: { posts: 0, views: 0, followers: 0 },
+                            X: { posts: 0, views: 0, engagement: 0 }
+                        };
+                    }
+                    
+                    const dayData = productData[record.product][record.date];
+                    dayData[record.platform].posts += record.posts;
+                    dayData[record.platform].views += record.views;
+                    dayData[record.platform].engagement += record.engagement;
+                    if (record.followers) {
+                        dayData[record.platform].followers = record.followers;
+                    }
+                });
+                
+                updateProgress(85);
+                addLog('📅 正在生成日期范围...', 'info');
+                
+                // 4. 生成连续日期
+                const allDates = new Set();
+                Object.values(productData).forEach(prod => {
+                    Object.keys(prod).forEach(date => allDates.add(date));
+                });
+                
+                const sortedDates = Array.from(allDates).sort();
+                
+                addLog(`📅 日期范围：${sortedDates[0]} 至 ${sortedDates[sortedDates.length - 1]} (共 ${sortedDates.length} 天)`, 'info');
+                
+                updateProgress(90);
+                addLog('💾 正在生成 Excel 文件...', 'info');
+                
+                // 5. 生成 Excel
+                const outputWorkbook = XLSX.utils.book_new();
+                
+                products.forEach(product => {
+                    const finalData = sortedDates.map(date => {
+                        const dayData = productData[product][date] || {
+                            date: date,
+                            FB: { posts: 0, views: 0, engagement: 0 },
+                            INS: { posts: 0, views: 0, engagement: 0 },
+                            TT: { posts: 0, views: 0, engagement: 0 },
+                            YT: { posts: 0, views: 0, followers: 0 },
+                            X: { posts: 0, views: 0, engagement: 0 }
+                        };
+                        
+                        return {
+                            '产品名称': product,
+                            '发布日期': dayData.date,
+                            'FB 贴子数': dayData.FB.posts,
+                            'FB 浏览量': dayData.FB.views,
+                            'FB 互动量': dayData.FB.engagement,
+                            'INS 贴子数': dayData.INS.posts,
+                            'INS 浏览量': dayData.INS.views,
+                            'INS 互动量': dayData.INS.engagement,
+                            'TT 贴子数': dayData.TT.posts,
+                            'TT 浏览量': dayData.TT.views,
+                            'TT 互动量': dayData.TT.engagement,
+                            'YT 贴子数': dayData.YT.posts,
+                            'YT 浏览量': dayData.YT.views,
+                            'YT 粉丝数': dayData.YT.followers,
+                            'X 贴子数': dayData.X.posts,
+                            'X 浏览量': dayData.X.views,
+                            'X 互动量': dayData.X.engagement
+                        };
+                    });
+                    
+                    const worksheet = XLSX.utils.json_to_sheet(finalData);
+                    
+                    // 设置列宽
+                    const wscols = [
+                        { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+                        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+                        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+                        { wch: 12 }, { wch: 12 }
+                    ];
+                    worksheet['!cols'] = wscols;
+                    
+                    const sheetName = product.substring(0, 31);
+                    XLSX.utils.book_append_sheet(outputWorkbook, worksheet, sheetName);
+                    addLog(`  ✅ 已生成：${sheetName}`, 'success');
+                });
+                
+                // 添加 Sheet10
+                if (templateWorkbook.Sheets['Sheet10']) {
+                    XLSX.utils.book_append_sheet(outputWorkbook, templateWorkbook.Sheets['Sheet10'], 'Sheet10');
+                }
+                
+                // 添加产品汇总表
+                const summaryData = products.map(product => {
+                    const prodRecords = allRecords.filter(r => r.product === product);
+                    return {
+                        '产品': product,
+                        '发布贴子总数': prodRecords.length,
+                        '总浏览量': prodRecords.reduce((sum, r) => sum + r.views, 0),
+                        '总互动量': prodRecords.reduce((sum, r) => sum + r.engagement, 0)
+                    };
+                });
+                
+                const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(outputWorkbook, summarySheet, '产品汇总');
+                
+                updateProgress(100);
+                
+                // 下载文件
+                const fileName = `总数据表格_${new Date().toISOString().slice(0, 7)}.xlsx`;
+                XLSX.writeFile(outputWorkbook, fileName);
+                
+                addLog(`🎉 完成！文件已下载：${fileName}`, 'success');
+                showStatus(`✅ 总表生成成功！文件已下载：${fileName}`, 'success');
+                
+            } catch (error) {
+                console.error(error);
+                addLog(`❌ 错误：${error.message}`, 'error');
+                showStatus('❌ 错误：' + error.message, 'error');
+                updateProgress(0);
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+        
+        // 文件选择监听
+        ['templateFile', 'fbFile', 'insFile', 'ttFile', 'ytFile', 'xFile'].forEach((id, index) => {
+            const input = document.getElementById(id);
+            const statusId = ['templateStatus', 'fbStatus', 'insStatus', 'ttStatus', 'ytStatus', 'xStatus'][index];
+            
+            input.addEventListener('change', () => {
+                setFileStatus(id, statusId, input.files.length > 0);
+            });
+        });
+    </script>
 </body>
 </html>
